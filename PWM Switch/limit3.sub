@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sim</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+</head>
+<body>
+<style>
+:root{
+  --bg:#f3f1ec; --panel:#ffffff; --fg:#1d1f22; --muted:#5e6470; --line:#d7d3ca; --wire:#2b2d31; --wire-off:#c4c0b6; --grid:#ebe8e0; --box:rgba(29,31,34,.03);
+  --accent:#b8541a; --on-accent:#ffffff;
+  --c-ckt1:#0f8f83; --c-ckt2:#b43c8f; --c-ckt3:#d4861c; --c-bat:#2f6fd0; --fet-on:#cf3b2f;
+  --ok:#2f8f4e; --warn:#c8871a;
+  --d-ckt1:#0f8f83; --d-ckt2:#b43c8f; --d-ckt3:#d4861c; --d-bat:#2f6fd0; --d-off:#c4c0b6; --d-fault:#cf3b2f;
+  --font-body:"IBM Plex Sans",system-ui,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#16181c; --panel:#1f2227; --fg:#e8e6e0; --muted:#9aa0ab; --line:#33373e; --wire:#dcd9d1; --wire-off:#4a4e56; --grid:#262a30; --box:rgba(232,230,224,.035);
+  --accent:#e8884a; --on-accent:#16181c;
+  --c-ckt1:#2ec7b6; --c-ckt2:#e06ac0; --c-ckt3:#f0a53a; --c-bat:#6ea2ff; --fet-on:#ff6a5c;
+  --ok:#5ccf7f; --warn:#f0b24a; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#16181c; --panel:#1f2227; --fg:#e8e6e0; --muted:#9aa0ab; --line:#33373e; --wire:#dcd9d1; --wire-off:#4a4e56; --grid:#262a30; --box:rgba(232,230,224,.035);
+  --accent:#e8884a; --on-accent:#16181c;
+  --c-ckt1:#2ec7b6; --c-ckt2:#e06ac0; --c-ckt3:#f0a53a; --c-bat:#6ea2ff; --fet-on:#ff6a5c;
+  --ok:#5ccf7f; --warn:#f0b24a; color-scheme:dark }
+
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;box-sizing:border-box;padding:20px;transform-origin:0 0;display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}
+.title{display:flex;flex-direction:column;gap:3px;padding:2px 2px 0}
+h1{font-size:21px;font-weight:600;margin:0;line-height:1.2}
+.title p{margin:0;font-size:12px;color:var(--muted)}
+.rail,.main{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+.main{gap:16px}
+.main .diag{flex:1;min-height:0;display:flex;flex-direction:column}
+.hrow{display:flex;gap:6px}
+.hrow button{flex:1;min-width:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.g2 button{padding:5px 9px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+.card h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+.stack{display:flex;flex-direction:column;gap:14px}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.modes.one{grid-template-columns:1fr}
+button{font:inherit;color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;text-align:left}
+button:hover{border-color:var(--muted)}
+button:focus-visible,.fet:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.card button b{display:block;font-weight:600}
+.card button span{display:block;font-size:11px;opacity:.8}
+#swap.on{background:var(--d-ckt3);border-color:var(--d-ckt3);color:#1d1f22}
+.fets button{display:flex;flex-direction:column;gap:2px}
+.fets button.on{background:var(--fet-on);border-color:var(--fet-on);color:var(--on-accent)}
+.fets button small{opacity:.85;font-size:11px}
+.env{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:4px 8px;font-size:12px;margin:8px 0 0;white-space:nowrap;align-items:center}
+.env dt{color:var(--muted)}.env dd{margin:0;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600;font-family:var(--font-body)}
+.pill.closed{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.pill.open{background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
+.ctl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.ctl .row{display:flex;gap:8px;align-items:center}
+.cin{display:grid;grid-template-columns:1fr auto auto;gap:4px 8px;align-items:center}
+.cin .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
+input[type=number]{font:inherit;font-family:var(--font-mono);width:5.5em;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:3px 6px}
+.diagram{position:relative;flex:1;min-height:0;background:#fff;border-radius:6px;--panel:#fff;--fg:#1d1f22;--muted:#5e6470;--line:#d7d3ca;--wire:#2b2d31;--wire-off:var(--d-off);--box:rgba(29,31,34,.03);--accent:#b8541a;--on-accent:#fff;--ok:#2f8f4e;--fet-on:var(--d-fault);--c-ckt1:var(--d-ckt1);--c-ckt2:var(--d-ckt2);--c-ckt3:var(--d-ckt3);--c-bat:var(--d-bat)}
+svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+svg text{font-family:var(--font-body);fill:var(--fg)}
+.lbl{font-size:13px}.lbl.sm{font-size:11px;fill:var(--muted)}
+.lbl.tab{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;fill:var(--muted)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.wire{fill:none;stroke:var(--wire-off);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.glow{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.dash{fill:none;stroke-linecap:butt;stroke-linejoin:round}
+.sym{fill:none;stroke:var(--wire);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.sym.fill{fill:var(--wire)}
+.sym.body{fill:var(--panel)}
+.box{fill:var(--box);stroke:var(--muted);stroke-width:1.3;stroke-dasharray:6 5;rx:4}
+.dot{fill:var(--wire)}
+.vchip rect{fill:var(--panel);stroke:var(--line);stroke-width:1;rx:8}
+.vchip text{font-family:var(--font-mono);font-size:11.5px;font-variant-numeric:tabular-nums}
+.vchip .nn{fill:var(--muted);font-family:var(--font-body);font-weight:600}
+.vchip.float text{fill:var(--muted)}
+.ichip{font-family:var(--font-mono);font-size:11px;font-variant-numeric:tabular-nums;font-weight:500;fill:var(--muted)}
+.fet{cursor:pointer}
+.fet .hit{fill:transparent}
+.fet:hover .hit{fill:color-mix(in srgb,var(--accent) 10%,transparent)}
+.fet .halo{fill:var(--fet-on);opacity:0;transition:opacity .25s}
+.fet.on .halo{opacity:.16}
+.fet.on .ch{stroke:var(--fet-on);stroke-width:3.6}
+.fet .state{font-size:11px;font-weight:600;fill:var(--muted)}
+.fet.on .state{fill:var(--fet-on)}
+.diode{cursor:pointer}
+.diode:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.diode .dhit{fill:transparent}
+.diode:hover .dhit{fill:color-mix(in srgb,var(--accent) 10%,transparent)}
+.diode.dead .sym{opacity:.3}
+.fbadge{fill:var(--fet-on);stroke:var(--panel);stroke-width:1.5}
+.fbadge-t{font-size:10px;font-weight:700;fill:var(--on-accent);font-family:var(--font-body)}
+.hint{font-size:12px;color:var(--muted);margin:0 0 6px}
+.flist{list-style:none;margin:0 0 8px;padding:0;font-size:12.5px}
+.flist li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}
+.flist .fs{font-weight:600;color:var(--fet-on);text-transform:uppercase;font-size:11px;letter-spacing:.05em}
+.tstat .lever{stroke:var(--ok);stroke-width:2.6;stroke-linecap:round;transition:transform .25s,stroke .25s;transform-box:fill-box;transform-origin:left center}
+.tstat.open .lever{transform:rotate(-32deg);stroke:var(--muted)}
+.tstat .st{font-size:11px;font-weight:600}
+.tstat .st.closed{fill:var(--ok)}.tstat .st.open{fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted);margin-top:8px;justify-content:center}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend .braid{background:repeating-linear-gradient(90deg,var(--d-ckt2) 0 6px,var(--d-ckt1) 6px 12px)}
+.results{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.kv{border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.kv .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kv .v{font-family:var(--font-mono);font-size:20px;font-variant-numeric:tabular-nums;line-height:1.3}
+.alert{margin:10px 0 0;padding:8px 10px;border:1px solid color-mix(in srgb,var(--fet-on) 40%,transparent);border-radius:6px;font-size:12.5px;color:var(--fet-on)}
+</style>
+
+<div id="stage">
+  <div class="rail">
+    <div class="card">
+      <h2>Circuit</h2>
+      <div class="stack" style="gap:6px">
+        <button id="ckt-baseline"><b>BASELINE</b></button>
+        <button id="ckt-proposed"><b>PROPOSED</b></button>
+        <button id="swap" aria-pressed="false"><b>SWAP CKT 2 ↔ CKT 3</b></button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Mode of operation</h2>
+      <div class="g2" id="modes"></div>
+      <dl class="env">
+        <dt>Temperature</dt><dd id="envT"></dd>
+        <dt>Irradiance</dt><dd id="envIrr"></dd>
+        <dt>AUX T‑stat</dt><dd id="envT1"></dd>
+        <dt>MAIN T‑stat</dt><dd id="envT2"></dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Shunt FETs</h2>
+      <div class="hrow fets">
+        <button id="btnM2"><b>M2 · CKT 2</b><small></small></button>
+        <button id="btnM3"><b>M3 · CKT 3</b><small></small></button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Parameters</h2>
+      <div class="stack" style="gap:8px">
+        <div class="ctl"><span>String currents, sum over the 8 panels, at the max-sum illumination</span>
+          <div class="cin">
+            <span><i class="sw" style="background:var(--d-ckt1)"></i>CKT 1 · 10s1p</span><input type="number" id="i1" min="0" max="20" step="0.01" value="1.3153"><span>A</span>
+            <span><i class="sw" id="sw-i2" style="background:var(--d-ckt2)"></i>CKT 2 · 20s2p</span><input type="number" id="i2" min="0" max="20" step="0.01" value="2.6306"><span>A</span>
+            <span><i class="sw" id="sw-i3" style="background:var(--d-ckt3)"></i>CKT 3 · 20s1p</span><input type="number" id="i3" min="0" max="20" step="0.01" value="1.3153"><span>A</span>
+          </div></div>
+        <div class="g2">
+          <label class="ctl"><span>Diode drop, every diode</span>
+            <div class="row"><input type="number" id="vf" min="0" max="3" step="0.05" value="0.7"><span>V</span></div></label>
+          <label class="ctl"><span>Battery voltage</span>
+            <div class="row"><input type="number" id="vbat" min="10" max="40" step="0.1" value="28"><span>V</span></div></label>
+        </div>
+        <div class="g2">
+          <label class="ctl" title="Open-circuit voltage of a 20 s string; the 10 s CKT 1 gets half of it"><span>String V<sub>oc</sub>, 20 s</span>
+            <div class="row"><input type="number" id="voc" min="10" max="120" step="1" value="55"><span>V</span></div></label>
+          <label class="ctl"><span>Bus load</span>
+            <div class="row"><input type="range" id="load" min="0" max="3" step="0.05" value="0.5"><span class="mono" id="loadV">0.50 A</span></div></label>
+        </div>
+        <button id="resetParams">Reset parameters</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Diode faults</h2>
+      <p class="hint">Click a diode: OK → shorted → open.</p>
+      <ul class="flist" id="faultList"></ul>
+      <button id="resetFaults">Clear all faults</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="card diag">
+      <div class="diagram">
+      <svg id="svg" viewBox="40 -14 945 622" xmlns="http://www.w3.org/2000/svg" aria-label="Solar array shunt and heater block diagram">
+                <path class="box" id="pbox" d=""/>
+        <path class="box" id="pbox2" d="M356 470 H440 V512 H356 Z"/>
+        <text class="lbl tab" id="pnlLbl" x="66" y="0">Solar Panel ×8</text>
+        <rect class="box" id="battBox" x="565" y="310" width="240" height="118"/>
+        <text class="lbl tab" id="battTab" x="700" y="300">Batt ×4</text>
+        <rect class="sym body" id="loadBox" x="860" y="329" width="88" height="44" rx="5"/>
+        <text class="lbl" id="loadT" x="904" y="355" text-anchor="middle" style="font-size:12px;font-weight:600">LOAD</text>
+
+        <g id="glows"></g>
+        <g id="wires"></g>
+        <g id="dashes"></g>
+        <g id="arrows"></g>
+        <g id="srcs"></g>
+        <g id="diodes"></g>
+        <g id="fets"></g>
+        <text class="lbl" id="auxLbl" transform="translate(586,392) rotate(-90)" style="font-size:12px">AUX HTR</text>
+        <text class="lbl" id="mainLbl" transform="translate(664,394) rotate(-90)" style="font-size:12px">MAIN HTR</text>
+                <line class="sym" id="bl1" x1="742" y1="346" x2="778" y2="346" stroke-width="3.4"/>
+        <line class="sym" id="bl2" x1="750" y1="356" x2="770" y2="356"/>
+        <text class="lbl" id="bplus" x="784" y="340" style="font-size:11px">+</text>
+        <text class="lbl" transform="translate(796,392) rotate(-90)" style="font-size:12px" id="battLbl">28V nom</text>
+        <g id="tstats"></g>
+        <g id="gnds"></g>
+        <g id="dots"></g>
+        <g id="ichips"></g>
+        <g id="vchips"></g>
+      </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--d-ckt1)"></i>CKT 1 loop</span>
+        <span id="lg-ckt2"><i style="background:var(--d-ckt2)"></i>CKT 2 loop</span>
+        <span id="lg-ckt3"><i style="background:var(--d-ckt3)"></i>CKT 3 loop</span>
+        <span><i style="background:var(--d-bat)"></i>Battery discharge loop</span>
+        <span><i class="braid"></i>Wire shared by two loops</span>
+        <span><i style="background:var(--d-off)"></i>No current</span>
+        <span><b style="color:var(--d-fault)">S</b> / <b style="color:var(--d-fault)">O</b> badge: diode shorted / open</span>
+        <span>≈ node has no solid reference; value set by diode leakage</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="resTitle">Readouts</h2>
+      <div class="results" id="results"></div>
+      <div id="alerts"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const RH=16.1;
+const I_MIN=5e-3;
+const DEF={i1:1.3153,i2:2.6306,i3:1.3153,vf:0.7,vbat:28,load:0.5,voc:55};
+const MODES=[
+  {id:'day',   name:'DAY',    desc:'full Sun, above 20 °C', T:'+60 °C', irr:1, t1:false, t2:false},
+  {id:'night', name:'NIGHT',  desc:'dark, below 4 °C',       T:'−40 °C', irr:0, t1:true,  t2:true},
+  {id:'dawn1', name:'DAWN 1', desc:'Sun just up, below 4 °C',     T:'−10 °C', irr:1, t1:true,  t2:true},
+  {id:'dawn2', name:'DAWN 2', desc:'Sun up, 4 to 20 °C',    T:'+10 °C', irr:1, t1:true,  t2:false},
+];
+const CKT_NAMES={baseline:'BASELINE',proposed:'PROPOSED'};
+const FAULTABLE=['D1','D2A','D2B','D3'];
+const state={mode:'dawn1', ckt:'baseline', swap:false, m2:false, m3:false, faults:{}, ...DEF};
+const NODE_NAMES=['N3','N2','N1','H','BUS','R1','A','B','HA'];
+const NN=NODE_NAMES.length;
+function solve(p){
+  const G_SW=1e4,G_FET=100,G_D=1e3,G_BAT=1e4,VD=p.vf,LEAK=1e-12,G_LK=1e-7;
+  const prop=p.ckt==='proposed', dark=(p.I1+p.I2+p.I3)===0;
+  const F=p.faults||{}, fs=id=>F[id]||'ok';
+  const lin=[{a:8,b:6,g:1/RH},{a:3,b:7,g:1/RH},{a:4,b:-1,g:G_BAT}];
+  if(prop) lin.push({a:5,b:-1,g:G_SW}); else lin.push({a:3,b:8,g:G_SW});
+  const D=[], gi={}, open={};
+  [['D3',0,4,['D3']],['D2',1,3,['D2A']],['D4',prop?1:3,4,['D2B']],['D5',5,prop?-1:7,prop?[]:['D1']]].forEach(([n,a,c,ids])=>{
+    if(!ids.length){gi[n]={tie:true,a,c};return;}
+    let good=0,isOpen=false; ids.forEach(id=>{const f=fs(id);if(f==='open')isOpen=true;else if(f!=='short')good++;});
+    open[n]=isOpen;
+    if(isOpen){gi[n]={dis:true};}
+    else if(good===0){gi[n]={tie:true,a,c};lin.push({a,b:c,g:G_SW});}
+    else{gi[n]={idx:D.length};D.push({n,a,c,v:VD*good});}
+  });
+  const i1=D.length; D.push({n:'DB1',a:2,c:8,v:VD});
+  const ic=D.length; D.push({n:'C1',a:2,c:5,v:p.voc/2,dis:dark,lk:true},{n:'C2',a:1,c:-1,v:p.voc,dis:dark,lk:true},{n:'C3',a:0,c:-1,v:p.voc,dis:dark,lk:true});
+  if(p.m3)lin.push({a:0,b:-1,g:G_FET}); if(p.m2)lin.push({a:1,b:-1,g:G_FET});
+  if(p.t1)lin.push({a:6,b:5,g:G_SW});   if(p.t2)lin.push({a:7,b:-1,g:G_SW});
+  const inj=new Array(NN).fill(0);
+  inj[0]+=p.I3; inj[1]+=p.I2; inj[2]+=p.I1; inj[5]-=p.I1; inj[4]+=p.vbat*G_BAT-p.load;
+  let best=null;
+  for(let m=0;m<(1<<D.length);m++){
+    if(D.some((d,i)=>d.dis&&(m>>i&1)))continue;
+    const A=Array.from({length:NN},()=>new Array(NN).fill(0)), b=inj.slice();
+    for(let i=0;i<NN;i++)A[i][i]+=LEAK;
+    const stamp=(a,c,g)=>{if(a>=0)A[a][a]+=g;if(c>=0)A[c][c]+=g;if(a>=0&&c>=0){A[a][c]-=g;A[c][a]-=g;}};
+    lin.forEach(l=>stamp(l.a,l.b,l.g));
+    D.forEach((d,i)=>{if(m>>i&1){stamp(d.a,d.c,G_D);if(d.a>=0)b[d.a]+=G_D*d.v;if(d.c>=0)b[d.c]-=G_D*d.v;}else if(!d.dis||d.lk){stamp(d.a,d.c,G_LK);}});
+    const V=gauss(A,b); if(!V)continue;
+    const vn=i=>i>=0?V[i]:0;
+    let viol=0; const Id=[];
+    D.forEach((d,i)=>{const vd=vn(d.a)-vn(d.c);
+      if(m>>i&1){const I=G_D*(vd-d.v);Id.push(I);if(I<-1e-6)viol+=-I;}
+      else{Id.push((!d.dis||d.lk)?G_LK*vd:0);if(!d.dis&&vd>d.v+1e-6)viol+=vd-d.v;}});
+    if(!best||viol<best.viol){best={viol,V,Id,m};}
+    if(viol===0)break;
+  }
+  const V=best.V, Id=best.Id;
+  const edges=[]; lin.forEach(l=>edges.push([l.a,l.b])); D.forEach((d,i)=>{if((best.m>>i&1)&&Math.abs(Id[i])>1e-4)edges.push([d.a,d.c]);});
+  const seen=new Set([-1]); let grow=true;
+  while(grow){grow=false;edges.forEach(([a,c])=>{if(seen.has(a)!==seen.has(c)){seen.add(a);seen.add(c);grow=true;}});}
+  const floating=NODE_NAMES.map((_,i)=>!seen.has(i));
+  const I={}, vn=i=>i>=0?V[i]:0;
+  const gcur=n=>{const g=gi[n];return g.tie?G_SW*(vn(g.a)-vn(g.c)):g.dis?0:Id[g.idx];};
+  I.D3=gcur('D3'); I.D2=gcur('D2'); I.D4=gcur('D4'); I.D5=gcur('D5'); I.D1=Id[i1]; I.C1=Id[ic]; I.C2=Id[ic+1]; I.C3=Id[ic+2];
+  I.M3=p.m3?G_FET*V[0]:0; I.M2=p.m2?G_FET*V[1]:0;
+  I.aux=(V[8]-V[6])/RH; I.main=(V[3]-V[7])/RH;
+  I.ckt3=I.M3+I.D3; I.ckt2=I.M2+I.D2+(prop?I.D4:0); I.ckt1=I.D1;
+  I.load=p.load; I.bat=I.D3+I.D4-p.load;
+  return {V,I,floating,viol:best.viol,open};
+}
+function gauss(A,b){const n=b.length;A=A.map(r=>r.slice());b=b.slice();
+  for(let i=0;i<n;i++){let mx=i;for(let r=i+1;r<n;r++)if(Math.abs(A[r][i])>Math.abs(A[mx][i]))mx=r;
+    [A[i],A[mx]]=[A[mx],A[i]];[b[i],b[mx]]=[b[mx],b[i]];
+    if(Math.abs(A[i][i])<1e-18)return null;
+    for(let r=i+1;r<n;r++){const f=A[r][i]/A[i][i];if(!f)continue;for(let c=i;c<n;c++)A[r][c]-=f*A[i][c];b[r]-=f*b[i];}}
+  const x=new Array(n).fill(0);
+  for(let i=n-1;i>=0;i--){let s=b[i];for(let c=i+1;c<n;c++)s-=A[i][c]*x[c];x[i]=s/A[i][i];}
+  return x;}
+const BL=['baseline'], PR=['proposed'];
+const KL=1.3, KR=1.35;
+const X=x=>x<=370?370-(370-x)*KL:x>=600?600+(x-600)*KR:x;
+const x3=X(150), x2=X(260), xF=X(340), xN=X(200), xT=X(315), x1=370, xA=600, xM=X(680), xD=X(712), xB=X(760), xC=X(904), xR=500;
+const xL=x3-75;
+function zig(x,y1,y2){const n=7,h=(y2-y1)/n,pts=[[x,y1]];for(let i=0;i<n;i++)pts.push([x+(i%2?-7:7),y1+h*(i+.5)]);pts.push([x,y2]);return pts;}
+const SEGS=[
+  {id:'c3up', pts:[[x3,318],[x3,40],[xF,40]], cur:I=>I.ckt3},
+  {id:'m3',   pts:[[xF,40],[xF,58]], cur:I=>I.M3},
+  {id:'m3g',  pts:[[xF,112],[xF,128]], cur:I=>I.M3},
+  {id:'d3',   pts:[[xF,40],[413,40]], cur:I=>I.D3},
+  {id:'d3b',  pts:[[437,40],[xB,40],[xB,165]], cur:I=>I.D3},
+  {id:'c2up', pts:[[x2,318],[x2,165],[xF,165]], cur:I=>I.ckt2},
+  {id:'m2',   pts:[[xF,165],[xF,183]], cur:I=>I.M2},
+  {id:'m2g',  pts:[[xF,237],[xF,253]], cur:I=>I.M2},
+  {id:'d2',   pts:[[xF,165],[413,165]], cur:I=>I.D2, only:BL},
+  {id:'d2b',  pts:[[437,165],[xA,165]], cur:I=>I.D2, only:BL},
+  {id:'h1',   pts:[[xA,165],[xM,165]], cur:I=>I.main+I.D4, only:BL},
+  {id:'d2p',  pts:[[xF,165],[xM,165]], cur:I=>I.D2+I.D4, only:PR},
+  {id:'m1a',  pts:[[xM,165],[xM,220]], cur:I=>I.D2, only:PR},
+  {id:'m1b',  pts:[[xM,244],[xM,330]], cur:I=>I.main, only:PR},
+  {id:'d4',   pts:[[xM,165],[xD-12,165]], cur:I=>I.D4},
+  {id:'d4b',  pts:[[xD+12,165],[xB,165]], cur:I=>I.D4},
+  {id:'auxfd',pts:[[xA,165],[xA,290]], cur:I=>I.aux-I.D1, only:BL},
+  {id:'d5s',  pts:[[x1,478],[x1,502]], cur:I=>I.D5, only:PR},
+  {id:'c1up', pts:[[x1,318],[x1,290],[xA,290]], cur:I=>I.D1},
+  {id:'aux1', pts:[[xA,290],[xA,330]], cur:I=>I.aux},
+  {id:'auxR', pts:zig(xA,330,400), cur:I=>I.aux, noArrow:true},
+  {id:'aux2', pts:[[xA,400],[xA,460],[498,460]], cur:I=>I.aux},
+  {id:'aux3', pts:[[470,460],[x1,460]], cur:I=>I.aux},
+  {id:'c1ret',pts:[[x1,460],[x1,388]], cur:I=>I.D1},
+  {id:'d5',   pts:[[x1,460],[x1,478]], cur:I=>I.D5},
+  {id:'d5b',  pts:[[x1,502],[x1,520]], cur:I=>I.D5},
+  {id:'main1',pts:[[xM,165],[xM,330]], cur:I=>I.main, only:BL},
+  {id:'mainR',pts:zig(xM,330,400), cur:I=>I.main, noArrow:true},
+  {id:'main2',pts:[[xM,400],[xM,520],[xA+14,520]], cur:I=>I.main, only:PR},
+  {id:'main3',pts:[[xA-14,520],[x1,520]], cur:I=>I.main, only:PR},
+  {id:'r520', pts:[[x1,520],[x2,520]], cur:I=>I.main+I.D5, only:PR},
+  {id:'main2b',pts:[[xM,400],[xM,520],[x1,520]], cur:I=>I.main, only:BL},
+  {id:'main3b',pts:[[x1,520],[xT+14,520]], cur:I=>I.main+I.D5, only:BL},
+  {id:'r520b',pts:[[xT-14,520],[x2,520]], cur:I=>I.main+I.D5, only:BL},
+  {id:'r260', pts:[[x2,520],[x2,580]], cur:I=>I.main+I.D5-I.ckt2},
+  {id:'c2ret',pts:[[x2,520],[x2,388]], cur:I=>I.ckt2},
+  {id:'c3ret',pts:[[x3,580],[x3,388]], cur:I=>I.ckt3},
+  {id:'r1',   pts:[[x2,580],[x3,580]], cur:I=>I.ckt3},
+  {id:'r2',   pts:[[xR,580],[x2,580]], cur:I=>I.ckt3+I.ckt2-I.main-I.D5},
+  {id:'r3',   pts:[[xB,580],[xR,580]], cur:I=>I.load+I.bat},
+  {id:'r4',   pts:[[xC,580],[xB,580]], cur:I=>I.load},
+  {id:'bus',  pts:[[xB,165],[xC,165],[xC,329]], cur:I=>I.load},
+  {id:'ciu',  pts:[[xC,373],[xC,580]], cur:I=>I.load},
+  {id:'bat1', pts:[[xB,165],[xB,346]], cur:I=>I.bat},
+  {id:'bat2', pts:[[xB,356],[xB,580]], cur:I=>I.bat},
+];
+const COMPS=[
+  {id:'FET3',a:[xF,58],b:[xF,112],cur:I=>I.M3},{id:'FET2',a:[xF,183],b:[xF,237],cur:I=>I.M2},
+  {id:'D3',a:[413,40],b:[437,40],cur:I=>I.D3},{id:'D2',a:[413,165],b:[437,165],cur:I=>I.D2,only:BL},{id:'D2p',a:[xM,220],b:[xM,244],cur:I=>I.D2,only:PR},{id:'D4',a:[xD-12,165],b:[xD+12,165],cur:I=>I.D4},
+  {id:'D5',a:[x1,478],b:[x1,502],cur:I=>I.D5,only:BL},
+  {id:'T1',a:[498,460],b:[470,460],cur:I=>I.aux},{id:'T2',a:[xA+14,520],b:[xA-14,520],cur:I=>I.main,only:PR},{id:'T2b',a:[xT+14,520],b:[xT-14,520],cur:I=>I.main+I.D5,only:BL},
+  {id:'LOAD',a:[xC,329],b:[xC,373],cur:I=>I.load},{id:'BAT',a:[xB,346],b:[xB,356],cur:I=>Math.max(I.bat,0)},
+];
+const SOURCES=[
+  {id:'ckt1',from:[x1,388],to:[x1,318],cur:I=>I.ckt1},
+  {id:'ckt3',from:[x3,388],to:[x3,318],cur:I=>I.ckt3},
+  {id:'ckt2',from:[x2,388],to:[x2,318],cur:I=>I.ckt2},
+  {id:'bat', from:[xB,356],to:[xB,346],cur:I=>Math.max(-I.bat,0)},
+];
+const RTN_PTS=new Set([xF+',128',xF+',253',xR+',580']);
+const nk=p=>{const k=p[0]+','+p[1];return RTN_PTS.has(k)?'RTN':k;};
+function decompose(I,ckt){
+  const EPS=I_MIN, edges=[];
+  const vis=o=>!o.only||o.only.includes(ckt);
+  const add=(id,a,b,cur)=>{if(Math.abs(cur)<EPS)return;const f=cur>0;edges.push({id,from:nk(f?a:b),to:nk(f?b:a),cap:Math.abs(cur),res:Math.abs(cur),contrib:{}});};
+  SEGS.filter(vis).forEach(s=>add(s.id,s.pts[0],s.pts[s.pts.length-1],s.cur(I)));
+  COMPS.filter(vis).forEach(c=>add(c.id,c.a,c.b,c.cur(I)));
+  const adj={}, radj={}; edges.forEach((e,i)=>{(adj[e.from]=adj[e.from]||[]).push(i);(radj[e.to]=radj[e.to]||[]).push(i);});
+  function dfs(from,to,back){const seen=new Set([from]);const path=[];
+    const go=n=>{if(n===to)return true;
+      const tryF=cond=>{for(const i of (adj[n]||[])){const e=edges[i];if(!cond(e)||seen.has(e.to))continue;seen.add(e.to);path.push([i,1]);if(go(e.to))return true;path.pop();}return false;};
+      if(tryF(e=>e.res>EPS))return true;
+      if(back){if(tryF(e=>e.res<=EPS))return true;
+        for(const i of (radj[n]||[])){const e=edges[i];if(seen.has(e.from))continue;seen.add(e.from);path.push([i,-1]);if(go(e.from))return true;path.pop();}}
+      return false;};
+    return go(from)?path:null;}
+  SOURCES.forEach(s=>{let rem=s.cur(I);if(rem<EPS)return;const from=nk(s.to),to=nk(s.from);
+    for(let g=0;g<40&&rem>EPS;g++){const path=dfs(from,to,false)||dfs(from,to,true);if(!path)break;
+      const f=Math.min(rem,...path.filter(([i,d])=>d>0&&edges[i].res>EPS).map(([i])=>edges[i].res));
+      path.forEach(([i,d])=>{edges[i].res-=d*f;edges[i].contrib[s.id]=(edges[i].contrib[s.id]||0)+d*f;});rem-=f;}});
+  const out={}; edges.forEach(e=>{out[e.id]={cap:e.cap,res:e.res,contrib:e.contrib};}); return out;
+}
+
+const SVGNS='http://www.w3.org/2000/svg';
+const el=(t,a,parent)=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);if(parent)parent.appendChild(e);return e;};
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const gGlow=document.getElementById('glows'), gWire=document.getElementById('wires'), gDash=document.getElementById('dashes'), gArr=document.getElementById('arrows');
+const segEl={};
+SEGS.forEach(s=>{const pts=s.pts.map(p=>p.join(',')).join(' ');
+  segEl[s.id]={glow:el('polyline',{class:'glow',points:pts},gGlow),base:el('polyline',{class:'wire',points:pts},gWire),dashes:[],pts,
+    arrow:el('path',{d:'M-5,-4.5 L5,0 L-5,4.5 Z'},gArr)};});
+const srcs=document.getElementById('srcs');
+const srcI={};
+const srcLbl={};
+[[[x3,362],'CKT 3','ckt3'],[[x2,362],'CKT 2','ckt2'],[[x1,362],'CKT 1','ckt1']].forEach(([c,n,k])=>{
+  const [x,y]=c;
+  el('circle',{class:'sym body',cx:x,cy:y,r:26},srcs);
+  el('line',{class:'sym',x1:x,y1:y+14,x2:x,y2:y-12},srcs);
+  el('path',{class:'sym fill',d:`M${x} ${y-17} l-6.5 10 h13 z`},srcs);
+  el('path',{class:'sym fill',d:`M${x-8} ${y-26} h16 l-8 -13 z`},srcs);
+  el('line',{class:'sym',x1:x-8,y1:y-40,x2:x+8,y2:y-40},srcs);
+  el('line',{class:'sym',x1:x,y1:y-40,x2:x,y2:y-44},srcs);
+  const t=el('text',{class:'lbl',transform:`translate(${x-34},${y+16}) rotate(-90)`,style:'font-weight:500;font-size:12px'},srcs); t.textContent=n; srcLbl[k]=t;
+  srcI[k]=el('text',{class:'ichip',transform:`translate(${x-49},${y+16}) rotate(-90)`},srcs);
+});
+const diodes=document.getElementById('diodes');
+const dEl={};
+function diode(x,y,dir,name,key,lblLeft){
+  const g=el('g',{class:'diode',tabindex:'0',role:'button'},diodes);
+  const title=el('title',{},g); title.textContent='Click to cycle '+name+': OK → shorted → open';
+  el('rect',{class:'dhit',x:x-16,y:y-26,width:32,height:40,rx:5},g);
+  if(dir==='r'){ el('path',{class:'sym fill',d:`M${x-10} ${y-8} L${x+8} ${y} L${x-10} ${y+8} Z`},g); el('line',{class:'sym',x1:x+8,y1:y-8,x2:x+8,y2:y+8},g);
+    el('line',{class:'sym',x1:x-12,y1:y,x2:x-10,y2:y},g); el('line',{class:'sym',x1:x+8,y1:y,x2:x+12,y2:y},g);}
+  else { el('path',{class:'sym fill',d:`M${x-8} ${y-10} L${x+8} ${y-10} L${x} ${y+8} Z`},g); el('line',{class:'sym',x1:x-8,y1:y+8,x2:x+8,y2:y+8},g);
+    el('line',{class:'sym',x1:x,y1:y-12,x2:x,y2:y-10},g); el('line',{class:'sym',x1:x,y1:y+8,x2:x,y2:y+12},g);}
+  const t=el('text',{class:'lbl sm',x:dir==='r'?x:lblLeft?x-14:x+14,y:dir==='r'?y-13:lblLeft?y-2:y+4,'text-anchor':dir==='r'?'middle':lblLeft?'end':'start'},g); t.textContent=name;
+  const badge=el('circle',{class:'fbadge',cx:x,cy:y,r:7.5},g); const bt=el('text',{class:'fbadge-t',x:x,y:y+3.6,'text-anchor':'middle'},g);
+  dEl[key||name]={g,badge,bt,name};
+  const cyc=()=>{const cur=state.faults[name]||'ok';const nxt=cur==='ok'?'short':cur==='short'?'open':'ok';if(nxt==='ok')delete state.faults[name];else state.faults[name]=nxt;update();};
+  g.addEventListener('click',cyc); g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();cyc();}});
+  return g;
+}
+diode(425,40,'r','D3'); diode(425,165,'r','D2A'); diode(xM,232,'d','D2A','D2A_p',true); diode(xD,165,'r','D2B'); const d5sym=diode(x1,490,'d','D1');
+const fets=document.getElementById('fets'); const fetEl={};
+function fet(name,x,y){
+  const g=el('g',{class:'fet',tabindex:'0',role:'button','aria-pressed':'false'},fets);
+  const title=el('title',{},g); title.textContent='Click to toggle '+name;
+  el('rect',{class:'hit',x:x-40,y:y-36,width:120,height:72,rx:8},g);
+  el('circle',{class:'halo',cx:x-2,cy:y,r:30},g);
+  el('line',{class:'sym',x1:x,y1:y-27,x2:x,y2:y-16},g);
+  el('line',{class:'sym',x1:x,y1:y+16,x2:x,y2:y+27},g);
+  el('line',{class:'sym ch',x1:x+4,y1:y-16,x2:x+4,y2:y+16},g);
+  el('line',{class:'sym',x1:x,y1:y-16,x2:x+4,y2:y-16},g); el('line',{class:'sym',x1:x,y1:y+16,x2:x+4,y2:y+16},g);
+  el('line',{class:'sym',x1:x+12,y1:y-14,x2:x+12,y2:y+14},g);
+  el('line',{class:'sym',x1:x+12,y1:y,x2:x+30,y2:y},g);
+  el('line',{class:'sym',x1:x,y1:y+16,x2:x-16,y2:y+16},g); el('line',{class:'sym',x1:x-16,y1:y+16,x2:x-16,y2:y-16},g); el('line',{class:'sym',x1:x-16,y1:y-16,x2:x,y2:y-16},g);
+  el('path',{class:'sym fill',d:`M${x-22} ${y+6} L${x-10} ${y+6} L${x-16} ${y-5} Z`},g); el('line',{class:'sym',x1:x-22,y1:y-5,x2:x-10,y2:y-5},g);
+  const st=el('text',{class:'state',x:x+34,y:y-3},g); st.textContent=name;
+  const st2=el('text',{class:'state',x:x+34,y:y+13},g);
+  fetEl[name]={g,st2};
+  const toggle=()=>{state[name.toLowerCase()]=!state[name.toLowerCase()];update();};
+  g.addEventListener('click',toggle); g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
+}
+fet('M3',xF,85); fet('M2',xF,210);
+const tst=document.getElementById('tstats'); const tsEl={};
+function tstat(name,x,y,txt){
+  const g=el('g',{class:'tstat'},tst);
+  el('circle',{class:'sym body',cx:x,cy:y-30,r:13},g);
+  const T=el('text',{class:'lbl',x:x,y:y-25,'text-anchor':'middle',style:'font-size:13px;font-weight:600'},g); T.textContent='T';
+  el('line',{class:'sym',x1:x,y1:y-17,x2:x,y2:y-6,'stroke-dasharray':'2 3','stroke-width':'1.6'},g);
+  el('circle',{class:'dot',cx:x-14,cy:y,r:2.8},g); el('circle',{class:'dot',cx:x+14,cy:y,r:2.8},g);
+  el('line',{class:'lever',x1:x-14,y1:y,x2:x+14,y2:y},g);
+  const l1=el('text',{class:'lbl sm',x:x,y:y+22,'text-anchor':'middle'},g); l1.textContent=txt;
+  const st=el('text',{class:'st',x:x,y:y+36,'text-anchor':'middle'},g);
+  tsEl[name]={g,st};
+}
+tstat('t1',484,460,'>20°C = OFF'); tstat('t2',xA,520,'>4°C = OFF'); tstat('t2b',xT,520,'>4°C = OFF');
+const gnds=document.getElementById('gnds');
+function gnd(x,y,label){ el('path',{class:'sym',d:`M${x} ${y} v9 M${x-10} ${y+9} h20 M${x-6} ${y+14} h12 M${x-2} ${y+19} h4`},gnds); if(label){const t=el('text',{class:'lbl sm',x:x-14,y:y+18,'text-anchor':'end'},gnds);t.textContent=label;} }
+gnd(xF,128); gnd(xF,253); gnd(xR,580,'PWR_RTN');
+const dots=document.getElementById('dots');
+[[x3,40],[x2,165],[xF,40],[xF,165],[xA,290],[xM,165],[xB,165],[xB,40],[x1,460],[x1,520],[x2,520],[x2,580],[x3,580],[xR,580],[xB,580],[xC,580]].forEach(([x,y])=>el('circle',{class:'dot',cx:x,cy:y,r:3.4},dots));
+const dot600=el('circle',{class:'dot',cx:xA,cy:165,r:3.4},dots);
+const vch=document.getElementById('vchips'); const vEl={};
+[[0,'N3',xN,28],[1,'N2',xN,153],[3,'H',xA+12,153],[4,'BUS',xB+10,208],[5,'R1',382,440],[6,'A',514,440],[7,'B',xM-24,542],[8,'N1',478,308]].forEach(([i,n,x,y])=>{
+  const g=el('g',{class:'vchip'},vch); const r=el('rect',{x:x-5,y:y-11,width:92,height:17},g);
+  const t=el('text',{x:x,y:y+1},g); const a=el('tspan',{class:'nn'},t); a.textContent=n+' '; const b=el('tspan',{},t);
+  vEl[i]={g,b,r,t};
+});
+const ich=document.getElementById('ichips'); const iEl={};
+[['D3',425,62,'middle','d3'],['M3',xF-24,89,'end','m3'],['D2',425,187,'middle','d2'],['M2',xF-24,214,'end','m2'],['D4',xD,187,'middle','d4'],
+ ['aux',xA+7,440,'start','auxR'],['main',xM+7,440,'start','mainR'],['D5',384,508,'start','d5'],['bat',xB+12,440,'start','bat2'],['load',xB+8,154,'start','bus']].forEach(([k,x,y,an,seg])=>{
+  const t=el('text',{class:'ichip',x,y,'text-anchor':an},ich); iEl[k]={t,seg};
+});
+iEl.ckt3={t:srcI.ckt3,seg:'c3up'}; iEl.ckt2={t:srcI.ckt2,seg:'c2up'}; iEl.ckt1={t:srcI.ckt1,seg:'c1up'};
+(()=>{const g=id=>document.getElementById(id), f=v=>v.toFixed(1);
+  g('pnlLbl').setAttribute('x',f(xL+6));
+  g('battBox').setAttribute('x',565); g('battBox').setAttribute('width',f(X(805)-565)); g('battTab').setAttribute('x',f(X(700)));
+  g('loadBox').setAttribute('x',f(xC-44)); g('loadT').setAttribute('x',f(xC));
+  g('auxLbl').setAttribute('transform',`translate(${f(xA-14)},392) rotate(-90)`); g('mainLbl').setAttribute('transform',`translate(${f(xM-16)},394) rotate(-90)`);
+  g('bl1').setAttribute('x1',f(xB-18)); g('bl1').setAttribute('x2',f(xB+18)); g('bl2').setAttribute('x1',f(xB-10)); g('bl2').setAttribute('x2',f(xB+10));
+  g('bplus').setAttribute('x',f(xB+24)); g('battLbl').setAttribute('transform',`translate(${f(xB+36)},392) rotate(-90)`);
+  g('pbox').setAttribute('d',`M${f(xL)} 10 H${f(X(745))} V256 H405 V402 H${f(xL)} Z`);
+  const left=xL-14, right=xC+44+16; g('svg').setAttribute('viewBox',`${f(left)} -14 ${f(right-left)} 622`);
+})();
+const modesDiv=document.getElementById('modes');
+MODES.forEach(m=>{const b=document.createElement('button');b.id='mode-'+m.id;b.innerHTML=`<b>${m.name}</b><span>${m.desc}</span>`;b.addEventListener('click',()=>{state.mode=m.id;update();});modesDiv.appendChild(b);});
+Object.keys(CKT_NAMES).forEach(c=>document.getElementById('ckt-'+c).addEventListener('click',()=>{state.ckt=c;update();}));
+document.getElementById('swap').addEventListener('click',()=>{state.swap=!state.swap;update();});
+document.getElementById('resetFaults').addEventListener('click',()=>{state.faults={};update();});
+document.getElementById('btnM2').addEventListener('click',()=>{state.m2=!state.m2;update();});
+document.getElementById('btnM3').addEventListener('click',()=>{state.m3=!state.m3;update();});
+const NUM={i1:[0,20],i2:[0,20],i3:[0,20],vf:[0,3],vbat:[1,60],voc:[5,200]};
+const inp={}; Object.keys(NUM).forEach(k=>{inp[k]=document.getElementById(k);inp[k].addEventListener('input',()=>{const v=+inp[k].value;if(Number.isFinite(v)&&v>=NUM[k][0]&&v<=NUM[k][1]){state[k]=v;update();}});});
+const loadIn=document.getElementById('load');
+loadIn.addEventListener('input',()=>{state.load=+loadIn.value;update();});
+function syncInputs(){Object.keys(NUM).forEach(k=>{inp[k].value=state[k];});loadIn.value=state.load;}
+document.getElementById('resetParams').addEventListener('click',()=>{Object.assign(state,DEF);syncInputs();update();});
+try{const s=JSON.parse(localStorage.getItem('heatersim1')||'null');
+  if(s&&MODES.some(m=>m.id===s.mode)&&CKT_NAMES[s.ckt]){
+    const f={}; if(s.faults&&typeof s.faults==='object')for(const [k,v] of Object.entries(s.faults)){if(FAULTABLE.includes(k)&&(v==='short'||v==='open'))f[k]=v;}
+    const o={mode:s.mode,ckt:s.ckt,swap:!!s.swap,m2:!!s.m2,m3:!!s.m3,faults:f};
+    Object.keys(NUM).forEach(k=>{const v=+s[k];if(Number.isFinite(v)&&v>=NUM[k][0]&&v<=NUM[k][1])o[k]=v;});
+    if(Number.isFinite(+s.load)&&s.load>=0&&s.load<=3)o.load=+s.load;
+    Object.assign(state,o);}
+}catch(e){}
+syncInputs();
+
+const fA=v=>{const a=Math.abs(v);if(a>=1000)return (v/1000).toFixed(2)+' kA';if(a>=10)return v.toFixed(1)+' A';return (a<I_MIN?0:v).toFixed(3)+' A';};
+const fV=v=>(Math.abs(v)<5e-3?0:v).toFixed(2)+' V';
+const fW=v=>v>=1000?(v/1000).toFixed(1)+' kW':v.toFixed(1)+' W';
+function hexrgb(h){h=h.trim();if(h[0]==='#'){if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16));}
+  const m=h.match(/\d+/g);return m?m.slice(0,3).map(Number):[128,128,128];}
+function loopColors(){const cs=getComputedStyle(document.documentElement);const o={};['ckt1','ckt2','ckt3','bat'].forEach(k=>{o[k]=hexrgb(cs.getPropertyValue('--d-'+k)||'#888');});return o;}
+const blend=(parts,cols)=>{let r=0,g=0,b=0,w=0;parts.forEach(([k,v])=>{const c=cols[k];if(!c)return;r+=c[0]*v;g+=c[1]*v;b+=c[2]*v;w+=v;});return w?[r/w,g/w,b/w].map(Math.round):[128,128,128];};
+const rgba=(c,a)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+function midpoint(pts){let L=0;const segL=[];for(let i=1;i<pts.length;i++){const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);segL.push(d);L+=d;}
+  let t=L/2;for(let i=0;i<segL.length;i++){if(t<=segL[i]){const a=pts[i],b=pts[i+1],u=t/segL[i];return {x:a[0]+(b[0]-a[0])*u,y:a[1]+(b[1]-a[1])*u,ang:Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI,L};}t-=segL[i];}
+  return {x:pts[0][0],y:pts[0][1],ang:0,L};}
+
+function update(){
+  try{localStorage.setItem('heatersim1',JSON.stringify(state));}catch(e){}
+  const mode=MODES.find(m=>m.id===state.mode);
+  const prop=state.ckt==='proposed', sw=state.swap;
+  const heaterStr=sw?{short:'CKT 3',i:state.i3}:{short:'CKT 2',i:state.i2};
+  const busStr   =sw?{short:'CKT 2',i:state.i2}:{short:'CKT 3',i:state.i3};
+  srcLbl.ckt3.textContent=busStr.short; srcLbl.ckt2.textContent=heaterStr.short;
+  document.getElementById('lg-ckt2').innerHTML='<i style="background:var(--d-ckt2)"></i>'+heaterStr.short+' loop'; document.getElementById('lg-ckt3').innerHTML='<i style="background:var(--d-ckt3)"></i>'+busStr.short+' loop';
+  document.getElementById('sw-i2').style.background=sw?'var(--d-ckt3)':'var(--d-ckt2)'; document.getElementById('sw-i3').style.background=sw?'var(--d-ckt2)':'var(--d-ckt3)';
+  const swb=document.getElementById('swap'); swb.classList.toggle('on',sw); swb.setAttribute('aria-pressed',sw);
+  const p={ckt:state.ckt,faults:state.faults,I1:state.i1*mode.irr,I2:heaterStr.i*mode.irr,I3:busStr.i*mode.irr,m2:state.m2,m3:state.m3,t1:mode.t1,t2:mode.t2,load:state.load,voc:state.voc,vbat:state.vbat,vf:state.vf};
+  const r=solve(p); const {V,I,floating,open}=r;
+  const flow=decompose(I,state.ckt), cols=loopColors();
+  MODES.forEach(m=>{const b=document.getElementById('mode-'+m.id);b.classList.toggle('on',m.id===state.mode);b.setAttribute('aria-pressed',m.id===state.mode);});
+  Object.keys(CKT_NAMES).forEach(c=>{const b=document.getElementById('ckt-'+c);b.classList.toggle('on',state.ckt===c);b.setAttribute('aria-pressed',state.ckt===c);});
+  d5sym.style.display=prop?'none':'';
+  dot600.style.display=prop?'none':''; vEl[8].g.style.display=prop?'':'none';
+  const shown={D3:true,D2A:!prop,D2A_p:prop,D2B:true,D1:!prop};
+  document.getElementById('pbox2').style.display=prop?'none':'';
+  vEl[3].t.setAttribute('x',prop?xM+10:xA+12); vEl[3].t.setAttribute('y',prop?273:154); vEl[3].r.setAttribute('x',prop?xM+5:xA+7); vEl[3].r.setAttribute('y',prop?261:142);
+  iEl.D2.t.setAttribute('x',prop?xM-14:425); iEl.D2.t.setAttribute('y',prop?246:187); iEl.D2.t.setAttribute('text-anchor',prop?'end':'middle'); iEl.D2.seg=prop?'m1a':'d2';
+  const present=new Set(Object.entries(shown).filter(([,v])=>v).map(([k])=>k));
+  Object.entries(dEl).forEach(([k,d])=>{const f=state.faults[d.name]||'ok';d.g.style.display=shown[k]?'':'none';d.g.classList.toggle('dead',f==='open');
+    d.badge.style.display=f==='ok'?'none':'';d.bt.style.display=f==='ok'?'none':'';d.bt.textContent=f==='short'?'S':'O';d.g.setAttribute('aria-label',d.name+' '+(f==='ok'?'OK':f));});
+  const fl=Object.entries(state.faults);
+  document.getElementById('faultList').innerHTML=fl.length?fl.map(([n,f])=>`<li><span>${n}${present.has(n)?'':' <span style="color:var(--muted)">(not in this circuit)</span>'}</span><span class="fs">${f==='short'?'shorted':'open'}</span></li>`).join(''):'<li><span style="color:var(--muted)">No faults injected</span></li>';
+  document.getElementById('envT').textContent=mode.T;
+  document.getElementById('envIrr').textContent=mode.irr?'1 Sun':'dark';
+  document.getElementById('envT1').innerHTML=`<span class="pill ${mode.t1?'closed':'open'}">${mode.t1?'CLOSED':'OPEN'}</span>`;
+  document.getElementById('envT2').innerHTML=`<span class="pill ${mode.t2?'closed':'open'}">${mode.t2?'CLOSED':'OPEN'}</span>`;
+  document.getElementById('loadV').textContent=state.load.toFixed(2)+' A';
+  document.getElementById('battLbl').textContent=state.vbat.toFixed(state.vbat%1?1:0)+'V';
+  [['M2',state.m2,heaterStr.short],['M3',state.m3,busStr.short]].forEach(([n,on,who])=>{const b=document.getElementById('btn'+n);b.classList.toggle('on',on);b.querySelector('b').textContent=n+' · '+who;b.querySelector('small').textContent=on?'ON · shunted':'OFF · feeds the bus';
+    fetEl[n].g.classList.toggle('on',on);fetEl[n].g.setAttribute('aria-pressed',on);fetEl[n].st2.textContent=on?'ON (shunted)':'OFF';});
+  tsEl.t2.g.style.display=prop?'':'none'; tsEl.t2b.g.style.display=prop?'none':'';
+  [['t1',mode.t1],['t2',mode.t2],['t2b',mode.t2]].forEach(([n,cl])=>{tsEl[n].g.classList.toggle('open',!cl);tsEl[n].st.textContent=cl?'CLOSED':'OPEN';tsEl[n].st.setAttribute('class','st '+(cl?'closed':'open'));});
+  const segColor={};
+  SEGS.forEach(s=>{const e=segEl[s.id];const hidden=s.only&&!s.only.includes(state.ckt);
+    const i=s.cur(I), f=flow[s.id], on=!hidden&&!!f&&f.cap>=I_MIN;
+    const parts=on?Object.entries(f.contrib).filter(([,v])=>Math.abs(v)>=I_MIN).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])):[];
+    if(on&&f.res>=I_MIN) parts.push(['rest',f.res]);
+    const col=on?blend(parts.map(([k,v])=>[k,Math.abs(v)]),cols):null; segColor[s.id]=col;
+    const w=2.4+Math.min(2.6,Math.abs(i)*1.5);
+    e.base.style.display=hidden?'none':''; e.glow.style.display=on?'':'none'; e.arrow.style.display=(on&&!s.noArrow&&midpoint(s.pts).L>=40)?'':'none';
+    e.base.style.stroke=on?rgba(col,0.35):''; e.base.style.strokeWidth=on?w+'px':'';
+    if(on){e.glow.style.stroke=rgba(col,0.16);e.glow.style.strokeWidth=(w+8)+'px';}
+    while(e.dashes.length<parts.length)e.dashes.push(el('polyline',{class:'dash',points:e.pts},gDash));
+    const d=10,gap=6,P=parts.length*d+gap, dur=Math.max(450,1900/Math.max(Math.abs(i),1e-3)), rev=i<0;
+    e.dashes.forEach((pl,j)=>{pl.getAnimations().forEach(a=>a.cancel());
+      if(j>=parts.length||!on){pl.style.display='none';return;}
+      pl.style.display='';const [k,v]=parts[j];pl.style.stroke=k==='rest'?'var(--muted)':rgba(cols[k],1);pl.style.strokeWidth=w+'px';
+      pl.setAttribute('stroke-dasharray',`${d} ${P-d}`);const start=-j*d;pl.setAttribute('stroke-dashoffset',start);const prev=rev!==(v<0);
+      if(!reduced.matches)pl.animate([{strokeDashoffset:start+'px'},{strokeDashoffset:(start+(prev?P:-P))+'px'}],{duration:dur,iterations:Infinity});});
+    if(on&&!s.noArrow){const m=midpoint(s.pts);e.arrow.setAttribute('transform',`translate(${m.x.toFixed(1)},${m.y.toFixed(1)}) rotate(${(m.ang+(rev?180:0)).toFixed(1)})`);e.arrow.style.fill=rgba(col,1);e.arrow.style.stroke='var(--panel)';e.arrow.style.strokeWidth='1px';}
+  });
+  NODE_NAMES.forEach((n,i)=>{const c=vEl[i];if(!c)return;const fl=floating[i];c.g.classList.toggle('float',fl);c.b.textContent=(fl?'≈':'')+fV(V[i]);
+    try{const w=c.t.getComputedTextLength();if(w>0)c.r.setAttribute('width',(w+10).toFixed(1));}catch(e){}});
+  const setI=(k,v)=>{const c=iEl[k];c.t.textContent=fA(v);const col=segColor[c.seg];c.t.style.fill=(Math.abs(v)>=I_MIN&&col)?rgba(col,1):'';};
+  setI('D3',I.D3);setI('M3',I.M3);setI('D2',I.D2);setI('M2',I.M2);setI('D4',I.D4);setI('aux',I.aux);setI('main',I.main);setI('D5',I.D5);setI('load',I.load);
+  setI('ckt3',I.ckt3);setI('ckt2',I.ckt2);setI('ckt1',I.ckt1);
+  iEl.bat.t.textContent=(I.bat>=0?'+':'')+fA(I.bat)+' '+(Math.abs(I.bat)<I_MIN?'':I.bat>0?'chg':'dis');iEl.bat.t.style.fill=(Math.abs(I.bat)>=I_MIN&&segColor.bat2)?rgba(segColor.bat2,1):'';
+  const Paux=I.aux*I.aux*RH, Pmain=I.main*I.main*RH;
+  const ckt1open=mode.irr>0&&I.C1>1e-4;
+  document.getElementById('resTitle').textContent='Readouts · '+CKT_NAMES[state.ckt]+(sw?' · CKT 2/3 swapped':'')+' · '+mode.name;
+  document.getElementById('results').innerHTML=[
+    ['Battery',(Math.abs(I.bat)>=I_MIN&&I.bat>0?'+':'')+fA(I.bat),I.bat>=I_MIN?'charging':I.bat<=-I_MIN?'discharging':'idle'],
+    ['Bus from array',fA(I.D3+I.D4),'D3 + D2B'],
+    ['MAIN HTR node',(floating[3]?'≈':'')+fV(V[3]),V[3]>state.vbat+1e-3?'above the battery':(state.vbat-V[3]).toFixed(1)+' V under the battery'],
+    ['AUX HTR',fW(Paux),fA(I.aux)+' · '+fV(I.aux*RH)],
+    ['MAIN HTR',fW(Pmain),fA(I.main)+' · '+fV(I.main*RH)],
+    ['CKT 1 string',ckt1open&&!mode.t1?'open':fA(I.ckt1),ckt1open?(mode.t1?'limited by its Voc ('+fV(state.voc/2)+')':'at Voc, no return path'):'delivered to the AUX loop'],
+  ].map(([k,v,s])=>`<div class="kv"><div class="k">${k}</div><div class="v">${v}</div><div class="k" style="text-transform:none;letter-spacing:0">${s}</div></div>`).join('');
+  const alerts=[];
+  if(I.M2>10) alerts.push(`Bus short through M2 (${fA(I.M2)}): a shorted bus-side diode puts the battery on N2.`);
+  if(I.M3>10) alerts.push(`Bus short through M3 (${fA(I.M3)}): shorted D3 puts the battery on N3.`);
+  if(I.D4<-1e-3) alerts.push(`Battery is back-feeding through shorted D2B: ${fW(Pmain)} in the MAIN HTR from the battery${!prop&&I.aux>1e-3?', '+fW(Paux)+' in the AUX HTR':''}.`);
+  if(r.viol>1e-6) alerts.push('Solver could not find a fully consistent diode state; values are a best fit.');
+  document.getElementById('alerts').innerHTML=alerts.map(a=>`<div class="alert">⚠ ${a}</div>`).join('');
+}
+function fit(){const W=1920,H=1080,s=Math.min(innerWidth/W,innerHeight/H);document.getElementById('stage').style.transform=`translate(${((innerWidth-W*s)/2).toFixed(1)}px,${((innerHeight-H*s)/2).toFixed(1)}px) scale(${s.toFixed(4)})`;}
+addEventListener('resize',fit); fit();
+update();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(update);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',update);
+new MutationObserver(update).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+reduced.addEventListener('change',update);
+})();
+</script>
+</body>
+</html>
